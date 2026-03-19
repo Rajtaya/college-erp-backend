@@ -6,7 +6,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Routes
 app.use('/api/auth',        require('./routes/auth'));
 app.use('/api/students',    require('./routes/students'));
 app.use('/api/attendance',  require('./routes/attendance'));
@@ -17,6 +16,7 @@ app.use('/api/admin',       require('./routes/admin'));
 app.use('/api/levels',      require('./routes/levels'));
 app.use('/api/programmes',  require('./routes/programmes'));
 app.use('/api/faculties',   require('./routes/faculties'));
+app.use('/api/enrollment',  require('./routes/enrollment'));
 
 app.listen(process.env.PORT || 3000, () => {
   console.log(`Server running on port ${process.env.PORT || 3000}`);

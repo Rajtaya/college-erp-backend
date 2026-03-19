@@ -180,3 +180,33 @@ router.get('/subjects/all', async (req, res) => {
 });
 
 module.exports = router;
+
+// Get enrollment summary
+router.get('/enrollment/summary', async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT 
+        st.student_id, st.roll_no, st.name as student_name,
+        p.programme_name, l.level_name,
+        COUNT(e.enrollment_id) as total_enrolled,
+        SUM(CASE WHEN e.status = 'ACCEPTED' THEN 1 ELSE 0 END) as accepted,
+        SUM(CASE WHEN e.status = 'REJECTED' THEN 1 ELSE 0 END) as rejected,
+        SUM(CASE WHEN e.status = 'PENDING' THEN 1 ELSE 0 END) as pending
+       FROM students st
+       LEFT JOIN student_subject_enrollment e ON st.student_id = e.student_id
+       LEFT JOIN programmes p ON st.programme_id = p.programme_id
+       LEFT JOIN levels l ON st.level_id = l.level_id
+       GROUP BY st.student_id
+       ORDER BY st.roll_no`
+    );
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Reset enrollment for a student
+router.delete('/enrollment/reset/:student_id', async (req, res) => {
+  try {
+    await db.query('DELETE FROM student_subject_enrollment WHERE student_id = ?', [req.params.student_id]);
+    res.json({ message: 'Enrollment reset successfully!' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
