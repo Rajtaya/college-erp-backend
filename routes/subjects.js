@@ -23,7 +23,7 @@ router.post('/', async (req, res) => {
   const {
     subject_code, subject_name, category, semester, credits,
     contact_hours, internal_marks, end_term_marks, total_marks,
-    exam_duration, teacher_id, level_id, programme_id, faculty_id,
+    teacher_id, level_id, programme_id, faculty_id,
     discipline_id, discipline_name, is_common
   } = req.body;
   try {
