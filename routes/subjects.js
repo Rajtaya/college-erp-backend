@@ -43,60 +43,79 @@ router.post('/', verify('admin'), async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET /teacher/:teacher_id — subjects assigned to a teacher (via subject_teachers)
+// GET /teacher/:teacher_id — all assignments for a teacher (with section + programme info)
 router.get('/teacher/:teacher_id', async (req, res) => {
   try {
     const [rows] = await db.query(
-      `SELECT s.*, l.level_name, p.programme_name, f.faculty_name, d.discipline_name,
-              st.section
+      `SELECT s.subject_id, s.subject_code, s.subject_name, s.category, s.semester, 
+              s.credits, s.internal_marks, s.level_id, s.faculty_id, s.discipline_id, s.is_common,
+              l.level_name, f.faculty_name, d.discipline_name,
+              st.id as assignment_id, st.section, st.programme_id, st.class_name,
+              p.programme_name
        FROM subject_teachers st
        JOIN subjects s ON st.subject_id = s.subject_id
        LEFT JOIN levels l ON s.level_id = l.level_id
-       LEFT JOIN programmes p ON s.programme_id = p.programme_id
+       LEFT JOIN programmes p ON st.programme_id = p.programme_id
        LEFT JOIN faculties f ON s.faculty_id = f.faculty_id
        LEFT JOIN disciplines d ON s.discipline_id = d.discipline_id
        WHERE st.teacher_id = ?
-       ORDER BY s.semester, s.subject_code`,
+       ORDER BY s.semester, s.subject_code, st.section`,
       [req.params.teacher_id]
     );
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET /:subject_id/teachers — all teachers for a subject
+// GET /:subject_id/teachers — all teachers for a subject with their sections
 router.get('/:subject_id/teachers', async (req, res) => {
   try {
     const [rows] = await db.query(
-      `SELECT t.teacher_id, t.name, t.email, t.department, st.section
+      `SELECT t.teacher_id, t.name, t.email, t.department,
+              st.id as assignment_id, st.section, st.programme_id, st.class_name,
+              p.programme_name
        FROM subject_teachers st
        JOIN teachers t ON st.teacher_id = t.teacher_id
-       WHERE st.subject_id = ?`,
+       LEFT JOIN programmes p ON st.programme_id = p.programme_id
+       WHERE st.subject_id = ?
+       ORDER BY t.name, st.section`,
       [req.params.subject_id]
     );
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// POST /:subject_id/teachers — assign a teacher to a subject
+// POST /:subject_id/teachers — assign teacher to subject with section + programme
 router.post('/:subject_id/teachers', verify('teacher', 'admin'), async (req, res) => {
-  const { teacher_id, section = 'A' } = req.body;
+  const { teacher_id, section = 'A', programme_id = null, class_name = null } = req.body;
   try {
     await db.query(
-      'INSERT INTO subject_teachers (subject_id, teacher_id, section) VALUES (?,?,?) ON DUPLICATE KEY UPDATE section=VALUES(section)',
-      [req.params.subject_id, teacher_id, section]
+      `INSERT INTO subject_teachers (subject_id, teacher_id, section, programme_id, class_name) 
+       VALUES (?,?,?,?,?) 
+       ON DUPLICATE KEY UPDATE class_name=VALUES(class_name)`,
+      [req.params.subject_id, teacher_id, section, programme_id, class_name]
     );
-    res.json({ message: 'Teacher assigned' });
+    res.json({ message: 'Teacher assigned to section' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// DELETE /:subject_id/teachers/:teacher_id — remove a teacher from a subject
+// DELETE /:subject_id/teachers/:teacher_id — remove specific assignment
 router.delete('/:subject_id/teachers/:teacher_id', verify('teacher', 'admin'), async (req, res) => {
+  const { section, programme_id } = req.query;
   try {
-    await db.query(
-      'DELETE FROM subject_teachers WHERE subject_id = ? AND teacher_id = ?',
-      [req.params.subject_id, req.params.teacher_id]
-    );
-    res.json({ message: 'Teacher removed' });
+    let query = 'DELETE FROM subject_teachers WHERE subject_id = ? AND teacher_id = ?';
+    const params = [req.params.subject_id, req.params.teacher_id];
+    if (section) { query += ' AND section = ?'; params.push(section); }
+    if (programme_id) { query += ' AND programme_id = ?'; params.push(programme_id); }
+    await db.query(query, params);
+    res.json({ message: 'Assignment removed' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// DELETE by assignment_id — remove specific row
+router.delete('/assignments/:assignment_id', verify('teacher', 'admin'), async (req, res) => {
+  try {
+    await db.query('DELETE FROM subject_teachers WHERE id = ?', [req.params.assignment_id]);
+    res.json({ message: 'Assignment removed' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
