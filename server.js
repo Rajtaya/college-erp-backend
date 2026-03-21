@@ -1,11 +1,40 @@
 const express = require('express');
 const cors    = require('cors');
+const helmet  = require('helmet');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
-app.use(express.json());
 
+// Security headers
+app.use(helmet());
+
+// Restrict CORS to your frontend only
+app.use(cors({
+  origin: [
+    'https://amazing-wisp-16aa99.netlify.app',
+    'http://localhost:3000',
+    'http://localhost:3001'
+  ],
+  methods: ['GET','POST','PUT','DELETE'],
+  allowedHeaders: ['Content-Type','Authorization']
+}));
+
+app.use(express.json({ limit: '10kb' }));
+
+// Rate limiting on login routes
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many login attempts. Try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/auth/student/login', loginLimiter);
+app.use('/api/auth/teacher/login', loginLimiter);
+app.use('/api/admin/login',        loginLimiter);
+
+// Routes
 app.use('/api/auth',        require('./routes/auth'));
 app.use('/api/students',    require('./routes/students'));
 app.use('/api/attendance',  require('./routes/attendance'));
@@ -18,6 +47,12 @@ app.use('/api/programmes',  require('./routes/programmes'));
 app.use('/api/faculties',   require('./routes/faculties'));
 app.use('/api/enrollment',  require('./routes/enrollment'));
 app.use('/api/disciplines', require('./routes/disciplines'));
+
+// Global error handler — never leak stack traces
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: 'Internal server error' });
+});
 
 app.listen(process.env.PORT || 3000, () => {
   console.log(`Server running on port ${process.env.PORT || 3000}`);
