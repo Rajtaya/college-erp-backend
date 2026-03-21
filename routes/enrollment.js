@@ -185,6 +185,27 @@ router.post('/submit/:student_id', verify('student', 'admin'), async (req, res) 
       });
     }
 
+
+    // MAJOR: exactly 3 groups required
+    const major = byCategory['MAJOR'] || [];
+    const getMajorBase = (code) => {
+      const c = code.trim();
+      const last = c.slice(-1).toUpperCase();
+      return ['T','P'].includes(last) ? c.slice(0,-1) : c;
+    };
+    const majorGroups = {};
+    major.forEach(s => { const b = getMajorBase(s.subject_code); if(!majorGroups[b]) majorGroups[b]=[]; majorGroups[b].push(s); });
+    const majorGroupCount = Object.keys(majorGroups).length;
+    if (majorGroupCount < 3) errors.push('MAJOR: Must select exactly 3 subjects/groups (selected ' + majorGroupCount + ')');
+    if (majorGroupCount > 3) errors.push('MAJOR: Cannot select more than 3 groups (selected ' + majorGroupCount + ')');
+    Object.entries(majorGroups).forEach(([base, group]) => {
+      const hasT = group.some(s => s.subject_code.trim().toUpperCase().endsWith('T'));
+      const hasP = group.some(s => s.subject_code.trim().toUpperCase().endsWith('P'));
+      const is3Credit = group.some(s => s.credits === 3);
+      if (is3Credit && hasT && !hasP) errors.push('MAJOR: Must also select the Practical companion for ' + base + 'T');
+      if (is3Credit && hasP && !hasT) errors.push('MAJOR: Must also select the Theory companion for ' + base + 'P');
+    });
+
     // Pending check
     const pending = enrollments.filter(e => e.status === 'PENDING');
     if (pending.length > 0) errors.push(`❌ ${pending.length} subject(s) still pending`);
