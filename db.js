@@ -5,8 +5,12 @@ let pool;
 const dbUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
 
 if (dbUrl) {
-  console.log('Using DATABASE_URL connection');
   const url = new URL(dbUrl);
+  console.log('DB host:', url.hostname);
+  console.log('DB user:', url.username);
+  console.log('DB pass length:', url.password.length);
+  console.log('DB pass first 4:', url.password.substring(0, 4));
+  console.log('DB name:', url.pathname.replace('/', ''));
   pool = mysql.createPool({
     host: url.hostname,
     port: parseInt(url.port) || 3306,
@@ -18,7 +22,6 @@ if (dbUrl) {
     queueLimit: 0
   });
 } else {
-  console.log('Using individual DB env vars, host:', process.env.DB_HOST);
   pool = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
