@@ -14,6 +14,4 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-console.log('Connected to:', url.hostname, url.pathname.slice(1));
-
 module.exports = pool;
