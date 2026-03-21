@@ -9,7 +9,7 @@ const app = express();
 app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({
-  origin: ['https://amazing-wisp-16aa99.netlify.app', 'http://localhost:3000', 'http://localhost:3001'],
+  origin: ['https://amazing-wisp-16aa99.netlify.app', 'https://college-erp-frontend-production.up.railway.app', 'http://localhost:3000', 'http://localhost:3001'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
