@@ -95,24 +95,21 @@ router.get('/status/:student_id', async (req, res) => {
 router.post('/submit/:student_id', verify('student', 'admin'), async (req, res) => {
   const { enrollments } = req.body;
   try {
-    const [existing] = await db.query(
-      'SELECT COUNT(*) as count FROM student_subject_enrollment WHERE student_id = ? AND status != \'PENDING\' AND admin_modified = 0',
-      [req.params.student_id]
-    );
-    if (existing[0].count > 0) {
+    let existingCount = 0;
+    try {
+      const [existing] = await db.query(
+        'SELECT COUNT(*) as count FROM student_subject_enrollment WHERE student_id = ?',
+        [req.params.student_id]
+      );
+      existingCount = existing[0].count;
+    } catch(e) { console.error('EXISTING CHECK ERROR:', e.message); }
+    if (existingCount > 0) {
       return res.status(400).json({ error: 'Already submitted. Contact admin to reset.' });
     }
 
     const accepted = enrollments.filter(e => e.status === 'ACCEPTED');
     const subjectIds = accepted.map(e => e.subject_id);
     let subjectDetails = [];
-    
-    // Validate pending subjects
-    const pending = enrollments.filter(e => e.status === "PENDING");
-    if (pending.length > 0) {
-      return res.status(400).json({ error: pending.length + " subject(s) still pending", errors: [pending.length + " subject(s) still pending"] });
-    }
-    
     if (subjectIds.length > 0) {
       const [details] = await db.query(
         `SELECT s.*, d.discipline_id, d.discipline_name
@@ -215,7 +212,7 @@ router.post('/submit/:student_id', verify('student', 'admin'), async (req, res) 
 
     // Pending check
     const pending = enrollments.filter(e => e.status === 'PENDING');
-    if (pending.length > 0) errors.push(`❌ ${pending.length} subject(s) still pending`);
+    if (pending.length > 0) return res.status(400).json({ error: pending.length + " subject(s) still pending — please Accept or Raise Error for all", errors: [pending.length + " subject(s) still pending"] });
 
     if (errors.length > 0) {
       return res.status(400).json({ error: errors.join('\n'), errors });

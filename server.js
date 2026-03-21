@@ -13,7 +13,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json({ limit: '10kb' }));
+app.use(express.json({ limit: '5mb' }));
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -41,7 +41,7 @@ app.use('/api/disciplines', require('./routes/disciplines'));
 
 app.use((err, req, res, next) => {
   console.error(err);
-  res.status(500).json({ error: 'Internal server error' });
+  console.error("GLOBAL ERROR:", err.message, err.stack); res.status(500).json({ error: err.message });
 });
 
 app.listen(process.env.PORT || 3000, () => {
