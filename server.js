@@ -36,15 +36,6 @@ app.use('/api/auth/teacher/login', loginLimiter);
 app.use('/api/admin/login',        loginLimiter);
 
 // Routes
-app.get('/api/debug', (req,res) => {
-  res.json({
-    db_host: process.env.DB_HOST || 'NOT SET',
-    db_name: process.env.DB_NAME || 'NOT SET',
-    db_user: process.env.DB_USER || 'NOT SET',
-    mysql_url: process.env.MYSQL_URL ? 'SET' : 'NOT SET',
-    jwt_secret: process.env.JWT_SECRET ? 'SET' : 'NOT SET',
-    port: process.env.PORT || 'NOT SET'
-  });
 });
 app.use('/api/auth',        require('./routes/auth'));
 app.use('/api/students',    require('./routes/students'));

@@ -15,7 +15,7 @@ router.post('/login', async (req, res) => {
     if (!valid) return res.status(401).json({ error: 'Invalid password' });
     const token = jwt.sign({ id: rows[0].admin_id, role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1d' });
     res.json({ token, admin: { admin_id: rows[0].admin_id, name: rows[0].name, email: rows[0].email } });
-  } catch (err) { console.error('ADMIN LOGIN ERROR:', err.message, err.code); res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Internal server error' }); }
 });
 
 router.use(verify('admin'));
