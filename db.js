@@ -13,4 +13,5 @@ const pool = mysql.createPool({
 });
 
 console.log('CONNECTING WITH:', process.env.DB_HOST, process.env.DB_USER, process.env.DB_PASSWORD?.substring(0,4));
+console.log('CONNECTING WITH:', process.env.DB_HOST, process.env.DB_USER, process.env.DB_PASSWORD?.substring(0,4));
 module.exports = pool;
