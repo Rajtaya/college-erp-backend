@@ -53,7 +53,7 @@ router.get('/subjects/:student_id', async (req, res) => {
     const enriched = subjects.map(sub => {
       let pair_code = null;
       let pair_type = null;
-      if (['MDC','SEC'].includes(sub.category) && sub.credits <= 2) {
+      if (['MDC','SEC','MAJOR'].includes(sub.category)) {
         const code = sub.subject_code.trim();
         const lastChar = code.slice(-1).toUpperCase();
         if (lastChar === 'T') {
