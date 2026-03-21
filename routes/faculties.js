@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { verify } = require('../middleware/auth');
+
+router.use(verify());
 
 // Get all faculties
 router.get('/', async (req, res) => {
@@ -11,7 +14,7 @@ router.get('/', async (req, res) => {
 });
 
 // Add faculty
-router.post('/', async (req, res) => {
+router.post('/', verify('admin'), async (req, res) => {
   const { faculty_name, description } = req.body;
   try {
     const [result] = await db.query(
@@ -23,7 +26,7 @@ router.post('/', async (req, res) => {
 });
 
 // Delete faculty
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verify('admin'), async (req, res) => {
   try {
     await db.query('DELETE FROM faculties WHERE faculty_id = ?', [req.params.id]);
     res.json({ message: 'Faculty deleted' });

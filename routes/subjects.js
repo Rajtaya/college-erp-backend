@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { verify } = require('../middleware/auth');
+
+router.use(verify());
 
 router.get('/', async (req, res) => {
   try {
@@ -17,7 +20,7 @@ router.get('/', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', verify('admin'), async (req, res) => {
   const { subject_code, subject_name, category, semester, credits, internal_marks, teacher_id, level_id, programme_id, faculty_id, discipline_id, discipline_name, is_common } = req.body;
   try {
     let resolved_discipline_id = discipline_id || null;
@@ -37,6 +40,63 @@ router.post('/', async (req, res) => {
       [subject_code, subject_name, category, semester, credits, internal_marks||0, teacher_id||null, level_id||null, isCommon?null:(programme_id||null), faculty_id||null, resolved_discipline_id, isCommon?true:false]
     );
     res.json({ message: 'Subject added', subject_id: result.insertId });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /teacher/:teacher_id — subjects assigned to a teacher (via subject_teachers)
+router.get('/teacher/:teacher_id', async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT s.*, l.level_name, p.programme_name, f.faculty_name, d.discipline_name,
+              st.section
+       FROM subject_teachers st
+       JOIN subjects s ON st.subject_id = s.subject_id
+       LEFT JOIN levels l ON s.level_id = l.level_id
+       LEFT JOIN programmes p ON s.programme_id = p.programme_id
+       LEFT JOIN faculties f ON s.faculty_id = f.faculty_id
+       LEFT JOIN disciplines d ON s.discipline_id = d.discipline_id
+       WHERE st.teacher_id = ?
+       ORDER BY s.semester, s.subject_code`,
+      [req.params.teacher_id]
+    );
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /:subject_id/teachers — all teachers for a subject
+router.get('/:subject_id/teachers', async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT t.teacher_id, t.name, t.email, t.department, st.section
+       FROM subject_teachers st
+       JOIN teachers t ON st.teacher_id = t.teacher_id
+       WHERE st.subject_id = ?`,
+      [req.params.subject_id]
+    );
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /:subject_id/teachers — assign a teacher to a subject
+router.post('/:subject_id/teachers', verify('teacher', 'admin'), async (req, res) => {
+  const { teacher_id, section = 'A' } = req.body;
+  try {
+    await db.query(
+      'INSERT INTO subject_teachers (subject_id, teacher_id, section) VALUES (?,?,?) ON DUPLICATE KEY UPDATE section=VALUES(section)',
+      [req.params.subject_id, teacher_id, section]
+    );
+    res.json({ message: 'Teacher assigned' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /:subject_id/teachers/:teacher_id — remove a teacher from a subject
+router.delete('/:subject_id/teachers/:teacher_id', verify('teacher', 'admin'), async (req, res) => {
+  try {
+    await db.query(
+      'DELETE FROM subject_teachers WHERE subject_id = ? AND teacher_id = ?',
+      [req.params.subject_id, req.params.teacher_id]
+    );
+    res.json({ message: 'Teacher removed' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

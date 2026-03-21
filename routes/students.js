@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const bcrypt = require('bcryptjs');
+const { verify } = require('../middleware/auth');
+
+router.use(verify('admin', 'teacher'));
 
 // Get all students
 router.get('/', async (req, res) => {
@@ -19,7 +22,7 @@ router.get('/', async (req, res) => {
 });
 
 // Add a student
-router.post('/', async (req, res) => {
+router.post('/', verify('admin'), async (req, res) => {
   const { roll_no, name, email, phone, course, semester, year, password, level_id, programme_id } = req.body;
   try {
     const hashed = await bcrypt.hash(password, 10);

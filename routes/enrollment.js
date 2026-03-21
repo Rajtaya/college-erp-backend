@@ -1,6 +1,24 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { verify } = require('../middleware/auth');
+
+router.use(verify());
+
+// GET /students/:subject_id — students enrolled (ACCEPTED) in a subject
+router.get('/students/:subject_id', async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT s.student_id, s.name, s.roll_no
+       FROM student_subject_enrollment e
+       JOIN students s ON e.student_id = s.student_id
+       WHERE e.subject_id = ? AND e.status = 'ACCEPTED'
+       ORDER BY s.roll_no`,
+      [req.params.subject_id]
+    );
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 // Get all subjects for student's programme with pairing info
 router.get('/subjects/:student_id', async (req, res) => {
@@ -74,12 +92,12 @@ router.get('/status/:student_id', async (req, res) => {
 });
 
 // Student submits enrollment
-router.post('/submit/:student_id', async (req, res) => {
+router.post('/submit/:student_id', verify('student', 'admin'), async (req, res) => {
   const { enrollments } = req.body;
   try {
     const [existing] = await db.query(
-      'SELECT COUNT(*) as count FROM student_subject_enrollment WHERE student_id = ? AND status != ?',
-      [req.params.student_id, 'PENDING']
+      'SELECT COUNT(*) as count FROM student_subject_enrollment WHERE student_id = ? AND status != \'PENDING\' AND admin_modified = 0',
+      [req.params.student_id]
     );
     if (existing[0].count > 0) {
       return res.status(400).json({ error: 'Already submitted. Contact admin to reset.' });
@@ -189,34 +207,6 @@ router.post('/submit/:student_id', async (req, res) => {
       );
     }
     res.json({ message: 'Enrollment submitted successfully!' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// Admin - get enrollment summary
-router.get('/admin/summary', async (req, res) => {
-  try {
-    const [rows] = await db.query(
-      `SELECT st.student_id, st.roll_no, st.name as student_name,
-              p.programme_name, l.level_name,
-              COUNT(e.enrollment_id) as total_enrolled,
-              SUM(CASE WHEN e.status = 'ACCEPTED' THEN 1 ELSE 0 END) as accepted,
-              SUM(CASE WHEN e.status = 'REJECTED' THEN 1 ELSE 0 END) as rejected,
-              SUM(CASE WHEN e.status = 'PENDING' THEN 1 ELSE 0 END) as pending
-       FROM students st
-       LEFT JOIN student_subject_enrollment e ON st.student_id = e.student_id
-       LEFT JOIN programmes p ON st.programme_id = p.programme_id
-       LEFT JOIN levels l ON st.level_id = l.level_id
-       GROUP BY st.student_id ORDER BY st.roll_no`
-    );
-    res.json(rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// Admin - reset enrollment
-router.delete('/admin/reset/:student_id', async (req, res) => {
-  try {
-    await db.query('DELETE FROM student_subject_enrollment WHERE student_id = ?', [req.params.student_id]);
-    res.json({ message: 'Enrollment reset successfully!' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

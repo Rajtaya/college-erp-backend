@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { verify } = require('../middleware/auth');
+
+router.use(verify());
 
 // Get all programmes with level and faculty names
 router.get('/', async (req, res) => {
@@ -47,7 +50,7 @@ router.get('/filter', async (req, res) => {
 });
 
 // Add programme
-router.post('/', async (req, res) => {
+router.post('/', verify('admin'), async (req, res) => {
   const { level_id, faculty_id, programme_name, duration_years } = req.body;
   try {
     const [result] = await db.query(
@@ -59,7 +62,7 @@ router.post('/', async (req, res) => {
 });
 
 // Delete programme
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verify('admin'), async (req, res) => {
   try {
     await db.query('DELETE FROM programmes WHERE programme_id = ?', [req.params.id]);
     res.json({ message: 'Programme deleted' });
