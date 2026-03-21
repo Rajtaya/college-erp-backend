@@ -106,6 +106,13 @@ router.post('/submit/:student_id', verify('student', 'admin'), async (req, res) 
     const accepted = enrollments.filter(e => e.status === 'ACCEPTED');
     const subjectIds = accepted.map(e => e.subject_id);
     let subjectDetails = [];
+    
+    // Validate pending subjects
+    const pending = enrollments.filter(e => e.status === "PENDING");
+    if (pending.length > 0) {
+      return res.status(400).json({ error: pending.length + " subject(s) still pending", errors: [pending.length + " subject(s) still pending"] });
+    }
+    
     if (subjectIds.length > 0) {
       const [details] = await db.query(
         `SELECT s.*, d.discipline_id, d.discipline_name
